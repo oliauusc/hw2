@@ -9,15 +9,39 @@
 #include "db_parser.h"
 #include "product_parser.h"
 #include "util.h"
+#include "mydatastore.h"
+#include "book.h"
+
+#include "movie.h"
+
+#include "clothing.h"
+
+
+
+
 
 using namespace std;
+
 struct ProdNameSorter {
     bool operator()(Product* p1, Product* p2) {
         return (p1->getName() < p2->getName());
     }
 };
 void displayProducts(vector<Product*>& hits);
-
+void displayProducts1(vector<Product*>& hits)
+{
+    int resultNo = 1;
+    if (hits.begin() == hits.end()) {
+    	cout << "No results found!" << endl;
+    	return;
+    }
+    for(vector<Product*>::iterator it = hits.begin(); it != hits.end(); ++it) {
+        cout << "Hit " << setw(3) << resultNo << endl;
+        cout << (*it)->displayString() << endl;
+        cout << endl;
+        resultNo++;
+    }
+}
 int main(int argc, char* argv[])
 {
     if(argc < 2) {
@@ -29,7 +53,7 @@ int main(int argc, char* argv[])
      * Declare your derived DataStore object here replacing
      *  DataStore type to your derived type
      ****************/
-    DataStore ds;
+    MyDataStore ds;
 
 
 
@@ -51,6 +75,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    // displayProducts(vector<Product*>& ds.products)  
     cout << "=====================================" << endl;
     cout << "Menu: " << endl;
     cout << "  AND term term ...                  " << endl;
@@ -100,10 +125,71 @@ int main(int argc, char* argv[])
                 done = true;
             }
 	    /* Add support for other commands here */
+            else if ( cmd == "ADD") {
+                string username;
+                int hit_result_index = -1;
+                ss >> username >> hit_result_index;
 
+                if((username.empty()) || (hit_result_index < 0)) {
+                    cout << "Invalid request.";
+                }
+                else {
+                    map<string, User*>::iterator u= ((ds.getUsers()).find(username));
+                    
+                    if (u != (ds.getUsers().end())) {
+                        if (hit_result_index > hits.size())
+                            cout << "Invalid index.";
+                        else {
+                            Product *prod = hits[hit_result_index-1];
+                            ds.addToCart(prod, username);
+                        }
+                    }
+                    else cout << "user not found.";
+                }
+            }
 
+            else if ( cmd == "VIEWCART") {
+                string username;
+                ss >> username;
 
+                map<string, User*>::iterator u= ((ds.getUsers()).find(username));
 
+                if((username.empty()) || (u == ((ds.getUsers()).end()))) {
+                    std::cout << "Invalid request or username not found.";
+                }
+                else {
+                    displayProducts1(ds.getCart(username));
+                    // for (int i = 0; i<ds.getCart(username).size(); i++)
+                    //     ds.getCart(username)[i]->displayString();
+                }
+            }
+
+            else if ( cmd == "BUYCART") {
+                string username;
+                ss >> username;
+                map<string, User*>::iterator u= ((ds.getUsers()).find(username));
+
+                if((username.empty()) || (u == (ds.getUsers()).end())) {
+                    cout << "Invalid request or username not found.";
+                }
+                else {
+                    double balance = (*u).second->getBalance();
+                    double amt = 0.0;
+                    for (int i = 0; i<(ds.getCart(username)).size();i++){
+                        amt += (((ds.getCart(username))[i])->getPrice());
+                    }
+                    if (amt>balance) cout << "Insufficient funds.";
+                    else {
+                        (u->second)->deductAmount(amt);
+
+                        for (int i = 0; i<(ds.getCart(username)).size();i++){
+                        ((ds.getCart(username))[i])->subtractQty(1);
+                        }
+                        ds.getCart(username).clear();
+
+                    }
+                }
+            }
             else {
                 cout << "Unknown command" << endl;
             }
